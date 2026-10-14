@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1512">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Radar AI">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Radar AI e S&amp;P 500</title>
+<style>
+:root{--bg:#f3f5f2;--sf:#fff;--tx:#14201a;--mu:#5d6b63;--ln:#d6ddd8;--up:#0f7a4a;--dn:#c23b2e;--ac:#1d4e89;--wa:#b7791f;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1512;--sf:#16201b;--tx:#e6efe9;--mu:#8fa196;--ln:#27352d;--up:#3ddc97;--dn:#ff6b5e;--ac:#7fb2f0;--wa:#f0b955;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1512;--sf:#16201b;--tx:#e6efe9;--mu:#8fa196;--ln:#27352d;--up:#3ddc97;--dn:#ff6b5e;--ac:#7fb2f0;--wa:#f0b955;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 "Avenir Next","Segoe UI",system-ui,sans-serif;max-width:760px;margin-inline:auto;padding:14px}
+h1{font:700 24px/1.2 Georgia,"Times New Roman",serif;margin:4px 0 2px}
+h2{font:700 17px/1.2 Georgia,serif;margin:0 0 10px}
+.s{color:var(--mu);margin:0 0 12px;font-size:14px}
+section{background:var(--sf);border:1px solid var(--ln);border-radius:10px;padding:14px;margin-bottom:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mk{flex:1 1 150px;border:1px solid var(--ln);border-radius:8px;padding:8px 10px}
+.mk b{display:block}.mk span{color:var(--mu);font-size:13px}
+.mk .t{font:600 19px ui-monospace,Menlo,monospace;color:var(--tx)}
+.mk.open .t{color:var(--up)}
+button,input{font:inherit;color:var(--tx)}
+button{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer}
+button.g{background:transparent;color:var(--ac);border:1px solid var(--ln)}
+button:focus-visible,input:focus-visible,tr:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+input{background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:9px;flex:1 1 200px;min-width:0}
+#ban{display:none;background:var(--wa);color:#111;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-weight:600}
+.sc{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-weight:600;color:var(--mu);text-align:left;padding:4px 6px;font-size:13px}
+td{padding:8px 6px;border-top:1px solid var(--ln);white-space:nowrap}
+tr.sel td{background:color-mix(in srgb,var(--ac) 12%,transparent)}
+tbody tr{cursor:pointer}
+.up{color:var(--up)}.dn{color:var(--dn)}.fl{color:var(--mu)}
+.tag{display:inline-block;border-radius:6px;padding:1px 7px;font-size:13px;font-weight:700;border:1px solid currentColor}
+svg{width:100%;height:auto;display:block}
+#log{list-style:none;margin:0;padding:0;max-height:320px;overflow-y:auto}
+#log li{padding:8px 0;border-top:1px solid var(--ln);font-size:15px}
+#log small{color:var(--mu)}
+button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.note{font-size:13px;color:var(--mu);margin:8px 0 0}
+#sum{font-size:17px}
+ol.g{margin:0 0 12px;padding-left:20px}
+ol.g li{margin-bottom:4px}
+</style>
+</head>
+<body>
+<h1>Radar AI e S&amp;P 500</h1>
+<p class="s">Segnala aperture, cambi di trend e picchi su S&amp;P 500, Nvidia, Intel e le aziende dell'intelligenza artificiale. Non esegue operazioni.</p>
+<div id="ban" role="alert"></div>
+
+<section id="setup">
+<h2>1. Collega i dati</h2>
+<ol class="g" id="guide">
+<li>Registrati gratis su <b>twelvedata.com</b> e copia la tua chiave API.</li>
+<li>Incollala qui sotto e premi <b>Salva e avvia</b>.</li>
+<li>Attendi circa due minuti: i dati arrivano un titolo alla volta.</li>
+</ol>
+<div class="row"><input id="key" type="password" placeholder="Chiave API" aria-label="Chiave API"><button id="go">Salva e avvia</button></div>
+<div class="row" style="margin-top:8px"><input id="wl" aria-label="Titoli da monitorare"></div>
+<p class="note">La lista ha al massimo 8 titoli, perché il piano gratuito consente 8 richieste al minuto. SPY è il fondo che replica l'S&amp;P 500. La chiave resta solo nel tuo browser.</p>
+<p class="note" id="st"><b>Stato:</b> in attesa della chiave.</p>
+</section>
+
+<section>
+<h2>2. Apertura dei mercati</h2>
+<div class="row" id="mks"></div>
+<div class="row" style="margin-top:10px"><button id="nt">Attiva avviso 10 minuti prima</button><span class="note" id="ntst" style="margin:0"></span></div>
+<p class="note">L'avviso (banner e suono) funziona solo con questa pagina aperta. Le festività non sono considerate.</p>
+</section>
+
+<section>
+<h2>3. Titoli monitorati</h2>
+<p id="sum" class="s">Nessun dato ancora.</p>
+<div class="sc"><table><thead><tr><th>Titolo</th><th>Prezzo</th><th>Oggi</th><th>1 anno</th><th>Fase</th></tr></thead><tbody id="tb"></tbody></table></div>
+<p class="note">Tocca una riga per vedere il grafico. "Fase" confronta le medie degli ultimi 10 e 40 intervalli da 5 minuti: Rialzista (bull), Ribassista (bear) o Laterale.</p>
+</section>
+
+<section>
+<h2 id="ct">Grafico</h2>
+<div class="row" style="margin-bottom:10px"><button class="g" id="m5">Oggi (5 min)</button><button class="g" id="my">Ultimo anno</button></div>
+<div id="ph" class="s"></div>
+<svg id="ch" viewBox="0 0 600 200" role="img" aria-label="Grafico prezzo con medie mobili"></svg>
+<p class="note" id="cn"></p>
+</section>
+
+<section>
+<h2>4. Segnali dei bot</h2>
+<ul id="log"><li class="fl">In attesa di segnali…</li></ul>
+<p class="note"><b>Bot Trend:</b> incrocio delle medie 5 e 20. <b>Bot Momentum:</b> RSI sopra 70 (possibile picco) o sotto 30 (possibile minimo). <b>Bot Picco:</b> nuovo massimo o minimo delle ultime 40 barre. Descrivono ciò che sta succedendo, non prevedono il futuro.</p>
+</section>
+
+<script>
+const NAMES={SPY:"S&P 500 (SPY)",NVDA:"Nvidia",INTC:"Intel",AMD:"AMD",MSFT:"Microsoft",GOOGL:"Alphabet",TSM:"TSMC",AVGO:"Broadcom",META:"Meta",AMZN:"Amazon",PLTR:"Palantir",SMCI:"Super Micro",MU:"Micron"};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const lg=k=>{try{return localStorage.getItem(k)}catch(e){return null}},ls=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const DEF="SPY,NVDA,INTC,AMD,MSFT,GOOGL,TSM,AVGO";
+const parseWL=t=>t.split(",").map(x=>x.trim().toUpperCase()).filter(Boolean).slice(0,8);
+let KEY=lg("ra_key")||"",WL=parseWL(lg("ra_wl")||DEF);
+const D={},S={},seen=new Set();let sel="SPY",slot=0,running=false,loaded=false;
+const sma=(a,n)=>a.length<n?null:a.slice(-n).reduce((x,y)=>x+y,0)/n;
+function rsi(a,n=14){if(a.length<n+1)return null;let g=0,l=0;for(let i=a.length-n;i<a.length;i++){const d=a[i]-a[i-1];d>0?g+=d:l-=d}return l===0?100:100-100/(1+g/l)}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const status=t=>{$("st").innerHTML="<b>Stato:</b> "+esc(t)};
+async function api(sym,iv,n){const t=Math.max(Date.now(),slot+8000);slot=t;await sleep(t-Date.now());const r=await fetch("https://api.twelvedata.com/time_series?symbol="+encodeURIComponent(sym)+"&interval="+iv+"&outputsize="+n+"&apikey="+encodeURIComponent(KEY));return r.json()}
+async function loadDaily(sym){const today=new Date().toISOString().slice(0,10);
+try{const c=JSON.parse(lg("ra_d_"+sym)||"null");if(c&&c.day===today&&c.d&&c.d.h){D[sym]=c.d;return true}}catch(e){}
+const j=await api(sym,"1day",260);if(j.status==="error"||!j.values){status(sym+": "+(j.message||"dati non disponibili")+(/api ?key/i.test(j.message||"")?" Controlla di aver copiato bene la chiave.":""));return false}
+const v=j.values,lim=new Date(Date.now()-365*864e5).toISOString().slice(0,10);let k=v.findIndex(x=>x.datetime<=lim);if(k<0)k=v.length-1;
+const r=v.slice().reverse();D[sym]={y:+v[k].close,p:+v[0].close,pc:v.length>1?+v[1].close:+v[0].close,h:{c:r.map(x=>+x.close),t:r.map(x=>x.datetime)}};
+ls("ra_d_"+sym,JSON.stringify({day:today,d:D[sym]}));return true}
+async function loadIntra(sym){const j=await api(sym,"5min",80);if(j.status==="error"||!j.values){status(sym+": "+(j.message||"dati intraday non disponibili"));return}
+const v=j.values.slice().reverse();S[sym]={a:v.map(x=>+x.close),t:v.map(x=>x.datetime)};D[sym].p=S[sym].a[S[sym].a.length-1];scan(sym)}
+function addSig(n,bot,txt,cls,time,key){if(seen.has(key))return;seen.add(key);const li=document.createElement("li");li.innerHTML='<b class="'+cls+'">'+esc(NAMES[n]||n)+'</b> '+esc(txt)+'<br><small>'+esc(bot)+' · '+esc(time)+'</small>';const L=$("log");if(L.firstChild&&L.firstChild.className==="fl")L.innerHTML="";L.insertBefore(li,L.firstChild);while(L.children.length>40)L.removeChild(L.lastChild)}
+function scan(n){const a=S[n].a,t=S[n].t;for(let i=Math.max(41,a.length-12);i<a.length;i++){const p0=a.slice(0,i),p1=a.slice(0,i+1),tm=t[i],kb=n+tm;
+const f1=sma(p0,5),s1=sma(p0,20),f2=sma(p1,5),s2=sma(p1,20);
+if(f1<=s1&&f2>s2)addSig(n,"Bot Trend","incrocio rialzista: possibile inizio di rialzo","up",tm,kb+"t");
+if(f1>=s1&&f2<s2)addSig(n,"Bot Trend","incrocio ribassista: possibile inizio di calo","dn",tm,kb+"t");
+const r1=rsi(p0),r2=rsi(p1);
+if(r1<=70&&r2>70)addSig(n,"Bot Momentum","RSI "+r2.toFixed(0)+": ipercomprato, possibile picco","dn",tm,kb+"r");
+if(r1>=30&&r2<30)addSig(n,"Bot Momentum","RSI "+r2.toFixed(0)+": ipervenduto, possibile minimo","up",tm,kb+"r");
+const w=a.slice(i-40,i),p=a[i];
+if(p>Math.max(...w))addSig(n,"Bot Picco","nuovo massimo a 40 barre (5 min)","up",tm,kb+"p");
+if(p<Math.min(...w))addSig(n,"Bot Picco","nuovo minimo a 40 barre (5 min)","dn",tm,kb+"p")}}
+function phase(n){const a=S[n]&&S[n].a;if(!a)return["-","fl"];const s1=sma(a,10),s2=sma(a,40);if(!s2)return["Laterale","fl"];const d=(s1/s2-1)*100;return d>0.3?["Rialzista","up"]:d<-0.3?["Ribassista","dn"]:["Laterale","fl"]}
+const pc=v=>'<span class="'+(v>=0?"up":"dn")+'">'+(v>=0?"+":"")+v.toFixed(1)+'%</span>';
+function render(){const ns=WL.filter(n=>D[n]);
+$("tb").innerHTML=ns.length?ns.map(n=>{const d=D[n],ph=phase(n);return'<tr tabindex="0" data-n="'+esc(n)+'" class="'+(n===sel?"sel":"")+'"><td><b>'+esc(NAMES[n]||n)+'</b></td><td>'+d.p.toFixed(2)+'</td><td>'+pc((d.p/d.pc-1)*100)+'</td><td>'+pc((d.p/d.y-1)*100)+'</td><td><span class="tag '+ph[1]+'">'+ph[0]+'</span></td></tr>'}).join(""):'<tr><td colspan="5" class="fl">'+(KEY?"Dati in caricamento…":"Inserisci la chiave API per vedere i titoli.")+'</td></tr>';
+if(!ns.includes(sel))sel=ns[0]||null;
+if(ns.length){const bull=ns.filter(n=>phase(n)[0]==="Rialzista").length,bear=ns.filter(n=>phase(n)[0]==="Ribassista").length,m=S.SPY?phase("SPY"):null;$("sum").innerHTML="Su "+ns.length+" titoli: <b class='up'>"+bull+" rialzisti</b>, <b class='dn'>"+bear+" ribassisti</b>, "+(ns.length-bull-bear)+" laterali."+(m?" Mercato (S&P 500): <b class='"+m[1]+"'>"+m[0]+"</b>.":"")}
+chart()}
+let mode="d5";
+function chart(){$("m5").className="g"+(mode==="d5"?" on":"");$("my").className="g"+(mode==="y1"?" on":"");
+const y=mode==="y1",full=sel?(y?(D[sel]&&D[sel].h&&D[sel].h.c):(S[sel]&&S[sel].a)):null;
+if(!full){$("ch").innerHTML="";$("ph").textContent="";$("cn").textContent="";return}
+const a=y?full:full.slice(-70),W=600,H=200,mn=Math.min(...a),mx=Math.max(...a),sy=v=>H-8-(v-mn)/(mx-mn||1)*(H-16),sx=i=>i/(a.length-1)*W;
+const line=(arr,st)=>'<polyline fill="none" '+st+' points="'+arr.map((v,i)=>v==null?null:sx(i).toFixed(1)+","+sy(v).toFixed(1)).filter(Boolean).join(" ")+'"/>';
+const f=y?50:5,sl=y?200:20,off=full.length-a.length,m=n=>a.map((_,i)=>{const e=off+i+1;return e<n?null:full.slice(e-n,e).reduce((x,y2)=>x+y2,0)/n});
+$("ch").innerHTML=line(a,'stroke="var(--tx)" stroke-width="2"')+line(m(f),'stroke="var(--up)" stroke-width="1.5" stroke-dasharray="5 3"')+line(m(sl),'stroke="var(--wa)" stroke-width="1.5" stroke-dasharray="1.5 3"');
+$("ct").textContent="Grafico di "+(NAMES[sel]||sel)+(y?" (ultimo anno, giornaliero)":" (barre da 5 minuti)");
+$("cn").textContent="Linea piena: prezzo. Tratteggiata: media "+f+(y?" giorni":"")+". Punteggiata: media "+sl+(y?" giorni (può mancare all'inizio).":".");
+if(y){const t=D[sel].h.t,last=full[full.length-1];$("ph").innerHTML='Minimo <b>'+mn.toFixed(2)+'</b> · Massimo <b>'+mx.toFixed(2)+'</b> · Ora <b>'+last.toFixed(2)+'</b> ('+pc((last/mx-1)*100)+' dal massimo)<br><span class="fl">Dal '+esc(t[0])+' al '+esc(t[t.length-1])+'</span>'}
+else{const p=phase(sel),s1=sma(full,10),s2=sma(full,40);$("ph").innerHTML='Fase attuale: <span class="tag '+p[1]+'">'+p[0]+'</span>'+(s2?' <span class="fl">scarto medie 10/40: '+((s1/s2-1)*100).toFixed(2)+'%</span>':'')}}
+$("m5").onclick=()=>{mode="d5";chart()};$("my").onclick=()=>{mode="y1";chart()};
+$("tb").addEventListener("click",e=>{const r=e.target.closest("tr");if(r&&r.dataset.n){sel=r.dataset.n;render()}});
+$("tb").addEventListener("keydown",e=>{if(e.key==="Enter"){const r=e.target.closest("tr");if(r&&r.dataset.n){sel=r.dataset.n;render()}}});
+
+/* Mercati */
+const MK=[["New York","America/New_York",9,30,390],["Milano","Europe/Rome",9,0,510]];
+const FMT={};
+function parts(ts,tz){const f=FMT[tz]||(FMT[tz]=new Intl.DateTimeFormat("en-US",{timeZone:tz,hourCycle:"h23",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"}));const o={};f.formatToParts(new Date(ts)).forEach(x=>o[x.type]=+x.value);return o}
+function off(ts,tz){const o=parts(ts,tz);return Date.UTC(o.year,o.month-1,o.day,o.hour,o.minute,o.second)-Math.floor(ts/1000)*1000}
+function nextOpen(tz,h,m,now){const o=parts(now,tz);for(let d=0;d<8;d++){const base=Date.UTC(o.year,o.month-1,o.day+d),dow=new Date(base).getUTCDay();if(dow===0||dow===6)continue;const g=base+h*36e5+m*6e4,inst=g-off(g,tz);if(inst>now)return inst}return null}
+function isOpen(tz,h,m,dur,now){const o=parts(now,tz),dow=new Date(Date.UTC(o.year,o.month-1,o.day)).getUTCDay();if(dow===0||dow===6)return false;const mi=o.hour*60+o.minute;return mi>=h*60+m&&mi<h*60+m+dur}
+const fmt=ms=>{const s=Math.floor(ms/1000),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=s%60,p=v=>String(v).padStart(2,"0");return(d?d+"g ":"")+p(h)+":"+p(m)+":"+p(x)};
+let notif=false,fired={};
+function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=0.15;o.start();o.stop(c.currentTime+0.4)}catch(e){}}
+function alertOpen(name,when){const k=name+when;if(fired[k])return;fired[k]=1;const msg=name+": apertura tra 10 minuti ("+new Date(when).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})+")";const b=$("ban");b.textContent=msg;b.style.display="block";setTimeout(()=>b.style.display="none",60000);beep();try{if("Notification" in window&&Notification.permission==="granted")new Notification("Radar AI",{body:msg})}catch(e){}}
+function clocks(){const now=Date.now();$("mks").innerHTML=MK.map(m=>{const no=nextOpen(m[1],m[2],m[3],now),open=isOpen(m[1],m[2],m[3],m[4],now);if(notif&&no&&no-now<=600000&&no-now>0)alertOpen(m[0],no);return'<div class="mk'+(open?" open":"")+'"><b>'+m[0]+'</b><span>'+(open?"Aperto":"Apre tra")+'</span><div class="t">'+(open?"in corso":no?fmt(no-now):"-")+'</div></div>'}).join("")}
+$("nt").onclick=async()=>{notif=!notif;if(notif){try{if("Notification" in window&&Notification.permission==="default")await Notification.requestPermission()}catch(e){}beep()}$("nt").textContent=notif?"Disattiva avviso":"Attiva avviso 10 minuti prima";$("ntst").textContent=notif?"Avviso attivo":""};
+
+/* Aggiornamento */
+async function cycle(){if(running||!KEY)return;const ny=MK[0];if(loaded&&!isOpen(ny[1],ny[2],ny[3],ny[4],Date.now()))return;running=true;
+try{for(const n of WL){status("scarico "+n+"…");if(!D[n]&&!(await loadDaily(n)))continue;await loadIntra(n);render()}loaded=true;status("aggiornato alle "+new Date().toLocaleTimeString("it-IT")+". Si aggiorna ogni 5 minuti mentre Wall Street è aperta.")}catch(e){status("errore di rete. Controlla la connessione e la chiave.")}running=false}
+$("go").onclick=()=>{KEY=$("key").value.trim()||KEY;WL=parseWL($("wl").value||DEF);ls("ra_key",KEY);ls("ra_wl",WL.join(","));Object.keys(D).forEach(k=>delete D[k]);Object.keys(S).forEach(k=>delete S[k]);loaded=false;sel=WL[0];$("guide").style.display="none";render();cycle()};
+$("key").value=KEY;$("wl").value=WL.join(",");if(KEY)$("guide").style.display="none";
+render();clocks();setInterval(clocks,1000);setInterval(cycle,300000);if(KEY)cycle();
+</script>
+</body>
+</html>
